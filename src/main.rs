@@ -7,7 +7,7 @@ use std::time::{Duration, Instant};
 
 use actix::*;
 use actix_files as fs;
-use actix_web::{web, App, Error,error,HttpRequest, HttpResponse, HttpServer,Responder};
+use actix_web::{error, web, App, Error, HttpRequest, HttpResponse, HttpServer, Responder};
 use actix_web_actors::ws;
 
 use futures::unsync::mpsc;
@@ -16,7 +16,6 @@ use futures::{future::ok, Future, Stream};
 mod codec;
 mod server;
 mod session;
-
 
 /// How often heartbeat pings are sent
 const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(5);
@@ -46,14 +45,13 @@ fn push(
     req: HttpRequest,
     stream: web::Payload,
     srv: web::Data<Addr<server::ChatServer>>,
-) -> (){
+) -> () {
     println!("res ==>Hello {}! id:{}", info.0, info.1);
-    srv.get_ref().clone().do_send(server::Message{
-        id: 0
-        ,room:info.0.to_owned(),
-        msg:info.1.to_owned()
+    srv.get_ref().clone().do_send(server::Message {
+        id: 0,
+        room: info.0.to_owned(),
+        msg: info.1.to_owned(),
     });
-     
 }
 
 struct WsChatSession {
@@ -253,16 +251,16 @@ fn main() -> std::io::Result<()> {
                     .header("LOCATION", "/static/websocket.html")
                     .finish()
             })))
-            // push 
+            // push
             .service(web::resource("/push/{room}/{msg}").route(web::get().to(push)))
             // websocket
             .service(web::resource("/ws/").to(chat_route))
             // static resources
             .service(fs::Files::new("/static/", "static/"))
     })
-    .bind("127.0.0.1:8080")?
+    .bind("127.0.0.1:3001")?
     .start();
 
-    println!("Started http server: 127.0.0.1:8080");
+    println!("Started http server: 127.0.0.1:3001");
     sys.run()
 }

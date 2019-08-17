@@ -24,7 +24,7 @@ pub struct Disconnect {
 }
 
 /// Send message to specific room
-#[derive(Message,Debug)]
+#[derive(Message, Debug)]
 pub struct Message {
     /// Id of the client session
     pub id: usize,
@@ -86,14 +86,14 @@ impl ChatServer {
             }
         }
         */
-        println!("---------{:?}",room);
+        println!("---------{:?}", room);
         if let Some(sessions) = self.rooms.get(room) {
-            println!("---------{:?}",sessions);
+            println!("---------{:?}", sessions);
             for id in sessions {
-                println!("---------{:?}",id);
+                println!("---------{:?}", id);
                 if let Some(addr) = self.sessions.get(id) {
-                        let _ = addr.do_send(session::Message(message.to_owned()));
-                    }
+                    let _ = addr.do_send(session::Message(message.to_owned()));
+                }
             }
         }
     }
@@ -160,7 +160,7 @@ impl Handler<Message> for ChatServer {
     type Result = ();
 
     fn handle(&mut self, msg: Message, _: &mut Context<Self>) {
-        println!("메세지 받았다 챗서버 {:?}",msg);
+        println!("메세지 받았다 챗서버 {:?}", msg);
         self.send_message(&msg.room, msg.msg.as_str(), msg.id);
     }
 }
