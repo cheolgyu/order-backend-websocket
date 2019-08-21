@@ -8,6 +8,10 @@ use std::collections::{HashMap, HashSet};
 
 use crate::session;
 
+use actix::Addr;
+use actix_web::{web};
+use crate::models::DbExecutor;
+
 /// Message for chat server communications
 
 /// New chat session is created

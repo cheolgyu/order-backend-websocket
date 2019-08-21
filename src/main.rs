@@ -3,6 +3,19 @@ extern crate serde_derive;
 #[macro_use]
 extern crate actix;
 
+#[macro_use]
+extern crate diesel;
+#[macro_use]
+extern crate diesel_derives;
+use diesel::{r2d2::ConnectionManager, PgConnection};
+use dotenv::dotenv;
+use std::env;
+mod models;
+mod schema;
+use crate::models::DbExecutor;
+
+use uuid::Uuid;
+
 use std::time::{Duration, Instant};
 
 use actix::*;
@@ -27,6 +40,7 @@ fn chat_route(
     req: HttpRequest,
     stream: web::Payload,
     srv: web::Data<Addr<server::ChatServer>>,
+    _db: web::Data<Addr<DbExecutor>>,
 ) -> Result<HttpResponse, Error> {
     ws::start(
         WsChatSession {
@@ -35,6 +49,7 @@ fn chat_route(
             room: "Main".to_owned(),
             name: None,
             addr: srv.get_ref().clone(),
+            db: _db.get_ref().clone(),
         },
         &req,
         stream,
@@ -45,7 +60,9 @@ fn push(
     req: HttpRequest,
     stream: web::Payload,
     srv: web::Data<Addr<server::ChatServer>>,
+    db: web::Data<Addr<DbExecutor>>,
 ) -> () {
+    //주문들어오면 db에 저장
     println!("res ==>Hello {}! id:{}", info.0, info.1);
     srv.get_ref().clone().do_send(server::Message {
         id: 0,
@@ -66,6 +83,8 @@ struct WsChatSession {
     name: Option<String>,
     /// Chat server
     addr: Addr<server::ChatServer>,
+    //// db addr
+    db: Addr<DbExecutor>,
 }
 
 impl Actor for WsChatSession {
@@ -184,6 +203,18 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for WsChatSession {
                     } else {
                         m.to_owned()
                     };
+                    // send message to db
+                    let p = serde_json::from_str(&msg).expect("111");
+                    let i = serde_json::from_str(&self.id.to_string()).expect("222");
+                    println!("---------111111111111");
+                    self.db.do_send(models::NewOrder {
+                        shop_id: Uuid::parse_str(&self.room).unwrap(),
+                        state: "req".to_string(),
+                        price: 0.0,
+                        products: p,
+                        req_session_id: i,
+                    });
+                    println!("---------3333333333");
                     // send message to chat server
                     self.addr.do_send(server::Message {
                         id: self.id,
@@ -228,8 +259,21 @@ impl WsChatSession {
 }
 
 fn main() -> std::io::Result<()> {
+    std::env::set_var(
+        "RUST_LOG",
+        "order-back-rust=debug,actix_web=debug,actix_server=debug",
+    );
     let _ = env_logger::init();
     let sys = actix::System::new("websocket-example");
+
+    //db
+    dotenv().ok();
+    let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+    let manager = ConnectionManager::<PgConnection>::new(database_url.clone());
+    let pool = r2d2::Pool::builder()
+        .build(manager)
+        .expect("Failed to create pool.");
+    let address: Addr<DbExecutor> = SyncArbiter::start(4, move || DbExecutor(pool.clone()));
 
     // Start chat server actor
     let server = server::ChatServer::default().start();
@@ -244,6 +288,7 @@ fn main() -> std::io::Result<()> {
     // Create Http server with websocket support
     HttpServer::new(move || {
         App::new()
+            .data(address.clone())
             .data(server.clone())
             // redirect to websocket.html
             .service(web::resource("/").route(web::get().to(|| {
@@ -252,7 +297,7 @@ fn main() -> std::io::Result<()> {
                     .finish()
             })))
             // push
-            .service(web::resource("/push/{room}/{msg}").route(web::get().to(push)))
+            //.service(web::resource("/push/{room}/{msg}").route(web::get().to(push)))
             // websocket
             .service(web::resource("/ws/").to(chat_route))
             // static resources
