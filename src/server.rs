@@ -90,11 +90,11 @@ impl ChatServer {
             }
         }
         */
-        println!("---------{:?}", room);
+        println!("---------room: {:?}", room);
         if let Some(sessions) = self.rooms.get(room) {
-            println!("---------{:?}", sessions);
+            println!("---------sessions: {:?}", sessions);
             for id in sessions {
-                println!("---------{:?}", id);
+                println!("---------sessions id : {:?}", id);
                 if let Some(addr) = self.sessions.get(id) {
                     let _ = addr.do_send(session::Message(message.to_owned()));
                 }

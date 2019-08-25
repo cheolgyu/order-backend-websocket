@@ -137,7 +137,7 @@ impl Handler<session::Message> for WsChatSession {
 /// WebSocket message handler
 impl StreamHandler<ws::Message, ws::ProtocolError> for WsChatSession {
     fn handle(&mut self, msg: ws::Message, ctx: &mut Self::Context) {
-        println!("WEBSOCKET MESSAGE: {:?}", msg);
+        //println!("WEBSOCKET MESSAGE: {:?}", msg);
         match msg {
             ws::Message::Ping(msg) => {
                 self.hb = Instant::now();
@@ -204,11 +204,11 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for WsChatSession {
                         m.to_owned()
                     };
                     // send message to db
-                    let p = serde_json::from_str(&msg).expect("111");
-                    let i = serde_json::from_str(&self.id.to_string()).expect("222");
+                    let p = serde_json::from_str(&msg).expect("오류1 json 형식");
+                    let i = serde_json::from_str(&self.id.to_string()).expect("오류2 json 형식");
                     println!("---------111111111111");
                     self.db.do_send(models::NewOrder {
-                        shop_id: Uuid::parse_str(&self.room).unwrap(),
+                        shop_id: Uuid::parse_str(&self.room).expect("오류3 shop id uuid 변환"),
                         state: "req".to_string(),
                         price: 0.0,
                         products: p,
