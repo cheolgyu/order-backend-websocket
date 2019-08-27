@@ -42,28 +42,42 @@ fn chat_route(
     srv: web::Data<Addr<server::ChatServer>>,
     _db: web::Data<Addr<DbExecutor>>,
 ) -> Result<HttpResponse, Error> {
-    ws::start(
+    let resp = ws::start(
         WsChatSession {
             id: 0,
             hb: Instant::now(),
             room: "Main".to_owned(),
             name: None,
             addr: srv.get_ref().clone(),
-            db: _db.get_ref().clone(),
         },
         &req,
         stream,
-    )
+    );
+     println!("{:?}", resp);
+    
+     let resp_info = match resp {
+        Ok(ref resp2) => resp2.headers().get("sec-websocket-accept"),
+      
+        Err(error) => {
+            panic!(
+                "There was a problem opening the file: {:?}",
+                error
+            )
+        },
+    };
+
+    println!("{:?}", resp_info);
+resp
 }
-fn push(
+fn url_push(
     info: web::Path<(String, String)>,
     req: HttpRequest,
     stream: web::Payload,
     srv: web::Data<Addr<server::ChatServer>>,
-    db: web::Data<Addr<DbExecutor>>,
+    
 ) -> () {
-    //주문들어오면 db에 저장
-    println!("res ==>Hello {}! id:{}", info.0, info.1);
+   
+    println!("url_push ==>room: {}! msg::{}", info.0, info.1);
     srv.get_ref().clone().do_send(server::Message {
         id: 0,
         room: info.0.to_owned(),
@@ -83,8 +97,7 @@ struct WsChatSession {
     name: Option<String>,
     /// Chat server
     addr: Addr<server::ChatServer>,
-    //// db addr
-    db: Addr<DbExecutor>,
+    
 }
 
 impl Actor for WsChatSession {
@@ -203,17 +216,7 @@ impl StreamHandler<ws::Message, ws::ProtocolError> for WsChatSession {
                     } else {
                         m.to_owned()
                     };
-                    // send message to db
-                    let p = serde_json::from_str(&msg).expect("오류1 json 형식");
-                    let i = serde_json::from_str(&self.id.to_string()).expect("오류2 json 형식");
-                    println!("---------111111111111");
-                    self.db.do_send(models::NewOrder {
-                        shop_id: Uuid::parse_str(&self.room).expect("오류3 shop id uuid 변환"),
-                        state: "req".to_string(),
-                        price: 0.0,
-                        products: p,
-                        req_session_id: i,
-                    });
+                   
                     println!("---------3333333333");
                     // send message to chat server
                     self.addr.do_send(server::Message {
@@ -297,7 +300,7 @@ fn main() -> std::io::Result<()> {
                     .finish()
             })))
             // push
-            //.service(web::resource("/push/{room}/{msg}").route(web::get().to(push)))
+            .service(web::resource("/push/{room}/{msg}").route(web::get().to(url_push)))
             // websocket
             .service(web::resource("/ws/").to(chat_route))
             // static resources
