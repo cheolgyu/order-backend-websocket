@@ -306,9 +306,9 @@ fn main() -> std::io::Result<()> {
             // static resources
             .service(fs::Files::new("/static/", "static/"))
     })
-    .bind("127.0.0.1:3001")?
+    .bind("0.0.0.0:3001")?
     .start();
 
-    println!("Started http server: 127.0.0.1:3001");
+    println!("Started http server: 0.0.0.0:3001");
     sys.run()
 }
