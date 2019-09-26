@@ -3,18 +3,8 @@ extern crate serde_derive;
 #[macro_use]
 extern crate actix;
 
-#[macro_use]
-extern crate diesel;
-#[macro_use]
-extern crate diesel_derives;
-use diesel::{r2d2::ConnectionManager, PgConnection};
 use dotenv::dotenv;
 use std::env;
-mod models;
-mod schema;
-use crate::models::DbExecutor;
-
-use uuid::Uuid;
 
 use std::time::{Duration, Instant};
 
@@ -40,7 +30,6 @@ fn chat_route(
     req: HttpRequest,
     stream: web::Payload,
     srv: web::Data<Addr<server::ChatServer>>,
-    _db: web::Data<Addr<DbExecutor>>,
 ) -> Result<HttpResponse, Error> {
     let resp = ws::start(
         WsChatSession {
@@ -271,12 +260,7 @@ fn main() -> std::io::Result<()> {
 
     //db
     dotenv().ok();
-    let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-    let manager = ConnectionManager::<PgConnection>::new(database_url.clone());
-    let pool = r2d2::Pool::builder()
-        .build(manager)
-        .expect("Failed to create pool.");
-    let address: Addr<DbExecutor> = SyncArbiter::start(4, move || DbExecutor(pool.clone()));
+
 
     // Start chat server actor
     let server = server::ChatServer::default().start();
@@ -284,14 +268,13 @@ fn main() -> std::io::Result<()> {
     // Start tcp server in separate thread
     let srv = server.clone();
     Arbiter::new().exec(move || {
-        session::TcpServer::new("127.0.0.1:12345", srv);
+        session::TcpServer::new("0.0.0.0:12345", srv);
         Ok::<_, ()>(())
     });
 
     // Create Http server with websocket support
     HttpServer::new(move || {
         App::new()
-            .data(address.clone())
             .data(server.clone())
             // redirect to websocket.html
             .service(web::resource("/").route(web::get().to(|| {
