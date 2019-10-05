@@ -1,10 +1,9 @@
-FROM localhost:5000/order-rust:latest
+FROM order-rust:latest
 
-RUN echo $RUSTC_WRAPPER
 WORKDIR /usr/src/myapp
 
 COPY . .
-RUN cargo build
+RUN RUSTC_WRAPPER=sccache  cargo build
 EXPOSE 3001
 
-CMD [ "cargo", "watch","-x","run" ]
+#CMD [ "cargo", "watch","-x","run" ]
