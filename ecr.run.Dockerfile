@@ -29,3 +29,10 @@ RUN chown myapp:myapp order-backend-websocket
 USER myapp
 
 CMD ["./order-backend-websocket"]
+
+# $(aws ecr get-login --no-include-email --region ap-northeast-2)
+# docker tag prod-order-backend-websocket:latest 410450153592.dkr.ecr.ap-northeast-2.amazonaws.com/order-backend-websocket:latest
+# docker push 410450153592.dkr.ecr.ap-northeast-2.amazonaws.com/order-backend-websocket:latest
+
+# $(aws ecr get-login --no-include-email --region ap-northeast-2)
+# docker pull 410450153592.dkr.ecr.ap-northeast-2.amazonaws.com/order-backend-websocket:latest
